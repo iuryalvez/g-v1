@@ -1,0 +1,26 @@
+/* Programa de teste G-V1
+   Testa declaracoes, loops e condicoes */
+principal {
+    int contador;
+    int limite;
+    car op;
+
+    contador = 0;
+    limite = +10;
+    op = 's';
+
+    escreva "Iniciando o loop";
+    novalinha;
+
+    enquanto (contador <= limite & op == 's') {
+        se (contador != 5) entao
+            contador = contador + 1;
+        senao {
+            escreva "Metade do caminho";
+            contador = contador + 2;
+        }
+        fimse
+    }
+
+    leia op;
+}
