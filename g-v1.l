@@ -4,30 +4,29 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "g-v1.h"
 // DECLARAÇÕES TEMPORÁRIAS PARA TESTE DO FLEX
-// Quando o Bison for implementado, removeremos essas linhas
-// e usaremos: #include "g-v1.tab.h"
-#define PRINCIPAL 258
-#define INT 259
-#define CAR 260
-#define LEIA 261
-#define ESCREVA 262
-#define NOVALINHA 263
-#define ENQUANTO 264
-#define SE 265
-#define ENTAO 266
-#define SENAO 267
-#define FIMSE 268
-#define MENORIGUAL 269
-#define MAIORIGUAL 270
-#define IGUAL 271
-#define DIFERENTE 272
-#define E 273
-#define OU 274
-#define IDENTIFICADOR 275
-#define CADEIACARACTERES 276
-#define CARCONST 277
-#define INTCONST 278
+// #define PRINCIPAL 258
+// #define INT 259
+// #define CAR 260
+// #define LEIA 261
+// #define ESCREVA 262
+// #define NOVALINHA 263
+// #define ENQUANTO 264
+// #define SE 265
+// #define ENTAO 266
+// #define SENAO 267
+// #define FIMSE 268
+// #define MENORIGUAL 269
+// #define MAIORIGUAL 270
+// #define IGUAL 271
+// #define DIFERENTE 272
+// #define E 273
+// #define OU 274
+// #define IDENTIFICADOR 275
+// #define CADEIACARACTERES 276
+// #define CARCONST 277
+// #define INTCONST 278
 %}
 
 /* seção do Flex destinada a definições regulares (MACROS) */
@@ -122,19 +121,19 @@ INTCONST            {DIGITO}+
 
 // RETIRAR APÓS O BISON ESTAR IMPLEMENTADO
 // Declaração externa de yyin
-extern FILE* yyin;
+//extern FILE* yyin;
 
-int main(int argc, char **argv) {
-    if(argc > 1) {
-        if(!(yyin = fopen(argv[1], "r"))) {
-            perror(argv[1]);
-            return 1;
-        }
-    }
-    while(yylex() != 0);
+// int main(int argc, char **argv) {
+//     if(argc > 1) {
+//         if(!(yyin = fopen(argv[1], "r"))) {
+//             perror(argv[1]);
+//             return 1;
+//         }
+//     }
+//     while(yylex() != 0);
 
-    if (yyin) {
-        fclose(yyin); // Fechar o arquivo é uma boa prática
-    }
-    return 0;
-}
+//     if (yyin) {
+//         fclose(yyin);
+//     }
+//     return 0;
+// }

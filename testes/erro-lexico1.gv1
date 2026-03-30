@@ -1,0 +1,7 @@
+/* Lexical error test - invalid char and string spanning multiple lines */
+principal { } 
+{
+    @               /* Invalid character */
+    escreva "String
+    quebrada";
+}
