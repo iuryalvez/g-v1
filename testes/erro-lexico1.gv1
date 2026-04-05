@@ -1,5 +1,5 @@
 /* Lexical error test - invalid char and string spanning multiple lines */
-principal { } 
+principal { }
 {
     @               /* Invalid character */
     escreva "String
