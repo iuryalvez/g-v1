@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ast.h"
 #include "g-v1.h"
 %}
 
@@ -164,10 +165,10 @@ voltar ao contexto normal (denominado INITIAL).
 "&"                 { return E; }
 "|"                 { return OU; }
 
-{IDENTIFICADOR}     { return IDENTIFICADOR; }
-{CADEIACARACTERES}  { return CADEIACARACTERES; }
-{CARCONST}          { return CARCONST; }
-{INTCONST}          { return INTCONST; }
+{IDENTIFICADOR}     { yylval.str = strdup(yytext); return IDENTIFICADOR; }
+{CADEIACARACTERES}  { yylval.str = strdup(yytext); return CADEIACARACTERES; }
+{CARCONST}          { yylval.str = strdup(yytext); return CARCONST; }
+{INTCONST}          { yylval.str = strdup(yytext); return INTCONST; }
 
 {ERRO_CADEIA}       { 
     printf("ERRO: CADEIA DE CARACTERES OCUPA MAIS DE UMA LINHA %d\n", yylineno);

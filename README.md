@@ -1,168 +1,173 @@
 # Compilador G-V1
 
-## Descrição
-Implementação de um compilador didático para a linguagem G-V1. O projeto utiliza Flex para análise léxica e Bison para análise sintática.
+Implementação de um compilador didático para a linguagem **G-V1**, desenvolvido
+para a disciplina de Compiladores da Universidade Federal de Goiás.
+
+---
 
 ## Dependências
-O ambiente de avaliação utilizará as seguintes versões:
-- GCC/G++ versão 14
-- Flex versão 2.6.4
-- Bison versão 3.8.2
 
-## Estrutura do Projeto
-- `g-v1.l`: Especificação do analisador léxico.
-- `testes/teste.gv1`: Arquivo de teste da linguagem.
-- `Makefile`: Script de automação de compilação.
+| Ferramenta | Versão usada |
+|------------|-------------|
+| GCC/G++    | 14          |
+| Flex       | 2.6.4       |
+| Bison      | 3.8.2       |
 
-## Execução
-
-Gere o executável do compilador através do comando:
+Para instalar no Ubuntu/Debian:
 ```bash
-make
+sudo apt install flex bison gcc make
 ```
 
-## Instruções do Flex
+---
 
-### Slides 3-5 sobre o Flex
+## Estrutura do Projeto
 
-Flex e Lex são programas geradores de analisadores léxicos.
+```
+g-v1/
+├── g-v1.l       # Analisador léxico (Flex)
+├── g-v1.y       # Analisador sintático + construção da AST (Bison)
+├── ast.h        # Definição dos tipos e funções da AST
+├── ast.c        # Implementação da AST
+├── Makefile     # Script de compilação
+└── testes/
+    └── teste.gv1
+```
 
-Recebem como entrada um arquivo contendo expressões
-regulares correspondentes aos padrões a serem reconhecidos
-pelo analisador léxico a ser gerado.
+---
 
-Geram um arquivo em C contendo o código do analisador léxico gerado.
+## Como compilar e executar
 
-O analisador é formado por um conjunto de autômatos finitos.
+```bash
+# Compila tudo (léxico + sintático + AST → executável g-v1)
+make
 
-Um autômato é gerado para cada expressão regular. (Teorema de Thompson)
+# Executa o compilador em um arquivo de entrada
+./g-v1 testes/teste.gv1
 
-### Slides 8-9 sobre a seção de definições
+# Remove arquivos gerados
+make clean
+```
 
-Nesta seção são especificadas as definições regulares. Elas possuem
-o seguinte formato: nome expressão-regular, onde nome deve
-iniciar com letra ou "_" e pode conter zero ou mais: letra, digito,
-"-" e "_". A expressão regular inicia após o primeiro caractere não
-branco (espaço, tabulação) após nome. Ex.: digit [0-9].
+---
 
-### Slide 16 sobre patterns
+## Fases implementadas
 
-No manual do Flex na seção Patterns há uma série de simplificações
-de expressões regulares que podem ajudar na escrita das expressões
-regulares.Entre elas destacam-se:
+### ✅ Fase 1 — Analisador Léxico (`g-v1.l`)
 
-Classes de caracteres: [xyz] = x|y|z, [ˆxyz] =ˆ(x|y|z),
-[abj − mZ] = (a|b|j|k|l|m|Z).
+Gerado automaticamente pelo **Flex** a partir das expressões regulares definidas
+no arquivo `g-v1.l`. Reconhece todos os tokens da linguagem G-V1:
 
-Expressões de classes de caracteres: [:alnum:], [:alpha:],
-[:digit:],[:space:],[:lower:], [:upper:] que devem parecer em
-classes de caracteres, i.e. entre [ e ]. Exemplo: as expressões a
-seguir são equivalentes entre si: [[:alnum:]]= [[:alpha:][:digit:]]
-= [[:alpha:][0-9]] = [a-zA-Z0-9]
+- Palavras reservadas: `principal`, `int`, `car`, `leia`, `escreva`, `novalinha`,
+  `se`, `entao`, `senao`, `fimse`, `enquanto`
+- Identificadores, constantes inteiras, constantes de caractere e strings
+- Operadores aritméticos, relacionais e lógicos
+- Comentários no estilo `/* ... */` (podem ocupar várias linhas)
+- Detecção e reporte de erros léxicos:
+  - `ERRO: CARACTERE INVALIDO <linha>`
+  - `ERRO: COMENTARIO NAO TERMINA <linha>`
+  - `ERRO: CADEIA DE CARACTERES OCUPA MAIS DE UMA LINHA <linha>`
 
-### Slide 8 sobre options
+**Mudança introduzida (Fase 2):** Os tokens que carregam valor léxico
+(`IDENTIFICADOR`, `INTCONST`, `CARCONST`, `CADEIACARACTERES`) passaram a
+preencher `yylval.str` com uma cópia do texto (`strdup(yytext)`), para que o
+Bison possa acessar o lexema nas ações semânticas.
 
-As opções para o comando flex podem ser passadas ao programa
-na linha de comando (ex. fex –header-file="lexico.h") ou
-podem ser informadas nesta seção através da diretiva %option. Por
-exemplo: %option header-file="lexico.h".
+---
 
-### Slide 10 sobre a definição de regras (após o primeiro %%)
+### ✅ Fase 2 — Analisador Sintático (`g-v1.y`)
 
-Uma regra tem o seguinte formato:
-padrão ação
+Gerado automaticamente pelo **Bison** (método LALR(1)) a partir da gramática
+da linguagem G-V1 definida no arquivo `g-v1.y`.
 
-Não pode haver identação antes de padrão
+Reconhece a estrutura completa do programa: blocos aninhados, declarações de
+variáveis, comandos (`leia`, `escreva`, `se`, `enquanto`, etc.) e expressões
+com a precedência correta de operadores.
 
-A ação deve aparecer na mesma linha de padrão, separados
-por pelo menos um espaço ou tabulação.
+Erros sintáticos são reportados com o formato:
+```
+ERRO: <mensagem> proximo a '<token>' - linha: <número>
+```
 
-Caso uma ação corresponda a várias linhas de código em C,
-ela deve iniciar com { e terminar com }.
+---
 
-Se uma definição regular é usada no padrão de uma regra ela
-deve aparecer entre chaves para indicar que ela deve ser
-substituída pela expressão regular correspondente. Por
-exemplo: {DIGIT}+ return NUMERO usa a definição regular
-DIGIT definida na seção de declarações. 
+### ✅ Fase 3 — Geração da AST (`ast.h` / `ast.c`)
 
-### Slide 13 sobre start conditions:
-Na seção de definição (antes do primeiro %%) definimos uma
-condição de partida: %x comentario
+A **Árvore Sintática Abstrata (AST)** é construída durante a análise sintática,
+por meio de ações semânticas embutidas em cada regra da gramática no `g-v1.y`.
 
-Na seção de regras, definimos uma expressão regular que
-caracteriza o início de um contexto. No caso, a expressão:
-"/*". Acrescentamos a ação BEGIN(comentario); 
+#### Por que uma AST?
 
-Regra completa: "/*" {BEGIN(comentario);}. Indica que, ao
-encontrar /* na entrada, o paser entra no contexto
-comentário.
+A AST é uma representação compacta e estruturada do programa. Ela elimina
+detalhes sintáticos desnecessários (como parênteses e ponto-e-vírgula) e mantém
+apenas a estrutura lógica do código, que será usada pelas fases seguintes
+(análise semântica e geração de código).
 
-As regras seguintes que devem valer no contexto c criado,
-devem ser escritas na forma:
-<c>expressão ação.
+#### Estrutura de um nó
 
-Uma expressão de término do contexto pode ser especificada
-para marcar o fim de um contexto. 
+Cada nó da AST é representado pela struct `No`:
 
-A ação: BEGIN(INITIAL); é utilizada para indicar ao parser para
-voltar ao contexto normal (denominado INITIAL).
+```c
+typedef struct No {
+    TipoNo tipo;      // que construção da linguagem este nó representa
+    int linha;        // linha no fonte (para mensagens de erro)
+    char *valor;      // texto léxico (apenas em nós folha)
+    struct No *filho1;
+    struct No *filho2;
+    struct No *filho3;
+} No;
+```
 
-### Slide 19 sobre o texto após o segundo %%
+#### Tipos de nós
 
-O texto que aparece nessa seção é copiado literalmente para o
-arquivo de saída na linguagem C gerado pelo Flex (i.e., lex.yy.c).
-Esta seção é geralmente formada por funções criadas pelo usuário
-para chamarem ou serem chamadas por yylex().
+| Categoria       | Tipos de nó                                                   |
+|-----------------|---------------------------------------------------------------|
+| Programa        | `AST_PROGRAMA`, `AST_BLOCO`                                   |
+| Declarações     | `AST_LISTA_DECL_VAR`, `AST_DECL_VAR`, `AST_TIPO_INT/CAR`     |
+| Comandos        | `AST_CMD_VAZIO/EXPR/LEIA/ESCREVA_*/NOVALINHA/SE/SE_SENAO/ENQUANTO` |
+| Expressões      | `AST_ATRIB`, `AST_SOMA/SUB/MUL/DIV`, `AST_OU/E/IGUAL/...`   |
+| Folhas          | `AST_IDENTIFICADOR`, `AST_INTCONST`, `AST_CARCONST`, `AST_CADEIACARACTERES` |
 
-A presença desta seção é opcional. No slide a seguir, um arquivo
-separado em C (main.c) é usado para abrir um arquivo de teste e
-ficar chamando yylex() para encontrar tokens no mesmo. Porém,
-poderíamos ter colocado a função main() que está em main.c, nesta
-seção e teríamos o mesmo efeito... 
+#### Exemplo de saída (programa simples)
 
-Notas: 
-Com isso, usando essa seção, é possível testar o Lex sem o Bison com a função main() declarada aqui.
-O código funciona normalmente, mas é preciso declarar os tokens com #define 
-na seção de definições (entre os "%{ %}" ) para o código compilar:
-
-// #define PRINCIPAL 258
-// #define INT 259
-// #define CAR 260
-// #define LEIA 261
-// #define ESCREVA 262
-// #define NOVALINHA 263
-// #define ENQUANTO 264
-// #define SE 265
-// #define ENTAO 266
-// #define SENAO 267
-// #define FIMSE 268
-// #define MENORIGUAL 269
-// #define MAIORIGUAL 270
-// #define IGUAL 271
-// #define DIFERENTE 272
-// #define E 273
-// #define OU 274
-// #define IDENTIFICADOR 275
-// #define CADEIACARACTERES 276
-// #define CARCONST 277
-// #define INTCONST 278
-
-// código C para testar sem o bison:
-
-extern FILE* yyin;
-
-int main(int argc, char **argv) {
-    if(argc > 1) {
-        if(!(yyin = fopen(argv[1], "r"))) {
-            perror(argv[1]);
-            return 1;
-        }
-    }
-    while(yylex() != 0);
-
-    if (yyin) {
-        fclose(yyin);
-    }
-    return 0;
+Dado o programa:
+```
+principal
+{
+  { x : int; }
+  {
+    x = 5;
+    escreva x;
+    novalinha;
+  }
 }
+```
+
+A AST impressa é:
+```
+[PROGRAMA] (linha 9)
+  [BLOCO] (linha 9)
+    [LISTA_COMANDO] (linha 9)
+      [BLOCO] (linha 8)
+        [LISTA_DECL_VAR] (linha 3)
+          [DECL_VAR] (linha 3)
+            [IDENTIFICADOR] "x" (linha 3)
+            [TIPO_INT] (linha 3)
+        [LISTA_COMANDO] (linha 8)
+          [CMD_EXPR] (linha 5)
+            [ATRIB] (linha 5)
+              [IDENTIFICADOR] "x" (linha 5)
+              [INTCONST] "5" (linha 5)
+          [LISTA_COMANDO] (linha 8)
+            [CMD_ESCREVA_EXPR] (linha 6)
+              [IDENTIFICADOR] "x" (linha 6)
+            [LISTA_COMANDO] (linha 8)
+              [CMD_NOVALINHA] (linha 7)
+```
+
+---
+
+## Próximas fases (a implementar)
+
+- [ ] **Tabela de Símbolos** — pilha de escopos para controle de variáveis
+- [ ] **Análise Semântica** — verificação de tipos e escopos sobre a AST
+- [ ] **Geração de Código** — geração de assembly MIPS a partir da AST
