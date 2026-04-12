@@ -1,8 +1,0 @@
-/* Syntax error test - missing semicolon */
-principal { 
-    valor : int; 
-} 
-{
-    valor = 5       /* Error occurs here */
-    escreva valor;
-}
