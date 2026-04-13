@@ -28,6 +28,8 @@ g-v1/
 ├── g-v1.y       # Analisador sintático + construção da AST (Bison)
 ├── ast.h        # Definição dos tipos e funções da AST
 ├── ast.c        # Implementação da AST
+├── tabela.h     # Definição da tabela de símbolos (pilha de escopos)
+├── tabela.c     # Implementação da tabela de símbolos
 ├── Makefile     # Script de compilação
 └── testes/
     └── teste.gv1
@@ -38,7 +40,7 @@ g-v1/
 ## Como compilar e executar
 
 ```bash
-# Compila tudo (léxico + sintático + AST → executável g-v1)
+# Compila tudo (léxico + sintático + AST + tabela → executável g-v1)
 make
 
 # Executa o compilador em um arquivo de entrada
@@ -67,10 +69,10 @@ no arquivo `g-v1.l`. Reconhece todos os tokens da linguagem G-V1:
   - `ERRO: COMENTARIO NAO TERMINA <linha>`
   - `ERRO: CADEIA DE CARACTERES OCUPA MAIS DE UMA LINHA <linha>`
 
-**Mudança introduzida (Fase 2):** Os tokens que carregam valor léxico
+**Mudança introduzida (Fase 3):** Os tokens que carregam valor léxico
 (`IDENTIFICADOR`, `INTCONST`, `CARCONST`, `CADEIACARACTERES`) passaram a
 preencher `yylval.str` com uma cópia do texto (`strdup(yytext)`), para que o
-Bison possa acessar o lexema nas ações semânticas.
+Bison possa acessar o lexema nas ações semânticas e construir os nós da AST.
 
 ---
 
@@ -119,13 +121,13 @@ typedef struct No {
 
 #### Tipos de nós
 
-| Categoria       | Tipos de nó                                                   |
-|-----------------|---------------------------------------------------------------|
-| Programa        | `AST_PROGRAMA`, `AST_BLOCO`                                   |
-| Declarações     | `AST_LISTA_DECL_VAR`, `AST_DECL_VAR`, `AST_TIPO_INT/CAR`     |
-| Comandos        | `AST_CMD_VAZIO/EXPR/LEIA/ESCREVA_*/NOVALINHA/SE/SE_SENAO/ENQUANTO` |
-| Expressões      | `AST_ATRIB`, `AST_SOMA/SUB/MUL/DIV`, `AST_OU/E/IGUAL/...`   |
-| Folhas          | `AST_IDENTIFICADOR`, `AST_INTCONST`, `AST_CARCONST`, `AST_CADEIACARACTERES` |
+| Categoria   | Tipos de nó                                                        |
+|-------------|--------------------------------------------------------------------|
+| Programa    | `AST_PROGRAMA`, `AST_BLOCO`                                        |
+| Declarações | `AST_LISTA_DECL_VAR`, `AST_DECL_VAR`, `AST_TIPO_INT/CAR`          |
+| Comandos    | `AST_CMD_VAZIO/EXPR/LEIA/ESCREVA_*/NOVALINHA/SE/SE_SENAO/ENQUANTO` |
+| Expressões  | `AST_ATRIB`, `AST_SOMA/SUB/MUL/DIV`, `AST_OU/E/IGUAL/...`        |
+| Folhas      | `AST_IDENTIFICADOR`, `AST_INTCONST`, `AST_CARCONST`, `AST_CADEIACARACTERES` |
 
 #### Exemplo de saída (programa simples)
 
@@ -166,8 +168,55 @@ A AST impressa é:
 
 ---
 
+### ✅ Fase 4 — Tabela de Símbolos (`tabela.h` / `tabela.c`)
+
+A **tabela de símbolos** controla quais variáveis existem em cada ponto do
+programa durante a análise semântica. É implementada como uma **pilha de
+escopos**: cada vez que o compilador entra em um bloco `{ }` com declarações,
+um novo escopo é empilhado; ao sair do bloco, esse escopo é desempilhado e
+suas variáveis deixam de existir.
+
+#### Funcionamento visual
+
+```
+Ao entrar no bloco interno:        Ao sair do bloco interno:
+
+  topo →  [ y : car  ]               topo →  [ x : int  ]
+          [ x : int  ]                        (NULL)
+          (NULL)
+```
+
+Quando o compilador precisa verificar se uma variável existe, a busca começa
+no topo da pilha (escopo mais interno) e desce até a base. Isso garante que
+uma variável declarada num bloco interno "esconde" outra de mesmo nome no
+bloco externo — comportamento idêntico ao da linguagem C.
+
+#### Operações disponíveis
+
+| Função                | O que faz                                              |
+|-----------------------|--------------------------------------------------------|
+| `iniciarPilha()`      | Cria a pilha vazia no início da compilação             |
+| `empilharEscopo()`    | Abre um novo bloco `{ }`, criando um escopo vazio      |
+| `inserirSimbolo()`    | Declara uma variável no escopo atual                   |
+| `buscarSimbolo()`     | Procura uma variável do escopo mais interno ao externo |
+| `desempilharEscopo()` | Fecha o bloco atual, removendo suas variáveis          |
+| `liberarPilha()`      | Libera toda a memória ao final da compilação           |
+
+#### Erros detectados (usados na fase seguinte)
+
+- **Redeclaração no mesmo escopo:** tentar declarar duas variáveis com o mesmo
+  nome dentro do mesmo bloco.
+- **Variável não declarada:** usar uma variável que não foi declarada em nenhum
+  escopo visível.
+
+> A tabela de símbolos ainda não produz saída visível por si só — ela será
+> utilizada pela fase seguinte (Análise Semântica) para verificar o programa.
+
+---
+
 ## Próximas fases (a implementar)
 
-- [ ] **Tabela de Símbolos** — pilha de escopos para controle de variáveis
-- [ ] **Análise Semântica** — verificação de tipos e escopos sobre a AST
-- [ ] **Geração de Código** — geração de assembly MIPS a partir da AST
+- [ ] **Análise Semântica** — percorre a AST usando a tabela de símbolos para
+  verificar tipos e uso correto das variáveis
+- [ ] **Geração de Código** — percorre a AST novamente para gerar instruções
+  em assembly MIPS
