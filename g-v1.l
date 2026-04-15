@@ -64,6 +64,7 @@ exemplo: %option header-file="lexico.h".
 */
 
 %option yylineno noyywrap
+%option nounput noinput
 /* %option header-file="lexico.h" */
 
 /* declaração de uma start condition */
@@ -95,10 +96,10 @@ condição de partida: %x comentario
 
 Na seção de regras, definimos uma expressão regular que
 caracteriza o início de um contexto. No caso, a expressão:
-"/*". Acrescentamos a ação BEGIN(comentario); 
+"incioDeComentario". Acrescentamos a ação BEGIN(comentario); 
 
-Regra completa: "/*" {BEGIN(comentario);}. Indica que, ao
-encontrar /* na entrada, o paser entra no contexto
+Regra completa: "incioDeComentario" {BEGIN(comentario);}. Indica que, ao
+encontrar "incioDeComentario" na entrada, o paser entra no contexto
 comentário.
 
 As regras seguintes que devem valer no contexto c criado,
