@@ -7,8 +7,9 @@ CC     = gcc
 CFLAGS = -Wall -g  # -Wall ativa todos os avisos; -g gera info de depuração
 
 # Passo final: linka todos os objetos para gerar o executável 'g-v1'
-g-v1: g-v1.o lexico.o ast.o tabela.o
-	$(CC) g-v1.o lexico.o ast.o tabela.o -o g-v1
+# Link all objects including the new semantic analyzer (semantico.o)
+g-v1: g-v1.o lexico.o ast.o tabela.o semantico.o
+	$(CC) g-v1.o lexico.o ast.o tabela.o semantico.o -o g-v1
 
 # Compila o arquivo C gerado pelo Bison
 g-v1.o: g-v1.c ast.h tabela.h
@@ -34,6 +35,40 @@ ast.o: ast.c ast.h
 tabela.o: tabela.c tabela.h
 	$(CC) $(CFLAGS) -c tabela.c -o tabela.o
 
+# Compila o analisador semântico
+# Compile the semantic analyzer object
+semantico.o: semantico.c ast.h tabela.h
+	$(CC) $(CFLAGS) -c semantico.c -o semantico.o
+
 # Remove todos os arquivos gerados
 clean:
 	rm -f *.o g-v1 g-v1.c g-v1.h lexico.c
+
+	# === ROTINA DE TESTES ===
+# Executa o compilador contra todos os arquivos nas pastas de teste.
+# O '|| true' impede que o make pare ao encontrar os exit(1) dos erros propositais.
+test: g-v1
+	@echo "\n================================================="
+	@echo "        EXECUTANDO TESTES CORRETOS               "
+	@echo "================================================="
+	@for file in Testes-G.v1/Corretos/*.g; do \
+		echo "\n[TESTANDO] $$file"; \
+		./g-v1 "$$file" || true; \
+	done
+	@echo "\n================================================="
+	@echo "      EXECUTANDO TESTES DE ERRO SINTATICO        "
+	@echo "================================================="
+	@for file in Testes-G.v1/ErroSintatico/*.g; do \
+		echo "\n[TESTANDO] $$file"; \
+		./g-v1 "$$file" || true; \
+	done
+	@echo "\n================================================="
+	@echo "      EXECUTANDO TESTES DE ERRO SEMANTICO        "
+	@echo "================================================="
+	@for file in Testes-G.v1/ErroSemantico/*.g; do \
+		echo "\n[TESTANDO] $$file"; \
+		./g-v1 "$$file" || true; \
+	done
+	@echo "\n================================================="
+	@echo "              BATERIA FINALIZADA                 "
+	@echo "=================================================\n"

@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"  /* tipos e funções da AST */
+#include "tabela.h" /* tipos e funções da tabela de símbolos */
 
 /* Variáveis externas definidas pelo código gerado pelo Flex */
 extern int yylineno;   /* número da linha atual no arquivo de entrada */
@@ -352,6 +353,9 @@ void yyerror(const char *s) {
     printf("ERRO: %s proximo a '%s' - linha: %d\n", s, yytext, yylineno);
 }
 
+extern No *raizAST;
+TipoVar analisarSemantica(No *no, PilhaTabela *pilha);
+
 /*
  * main — ponto de entrada do compilador.
  *
@@ -378,8 +382,11 @@ int main(int argc, char **argv) {
     if (yyparse() == 0) {
         printf("Analise sintatica concluida com sucesso.\n");
         printf("\n--- AST ---\n");
+        PilhaTabela *pilha = iniciarPilha();
+        analisarSemantica(raizAST, pilha); /* análise semântica e checagem de tipos */
         imprimirAST(raizAST, 0); /* imprime a árvore para depuração */
         liberarAST(raizAST);    /* libera toda a memória da AST     */
+        printf("\nArvore impressa e liberada\n\nAnalise semantica concluida com sucesso.\n");
     }
 
     fclose(yyin);
