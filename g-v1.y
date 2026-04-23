@@ -15,7 +15,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "ast.h"  /* tipos e funções da AST */
+#include "ast.h"
+#include "tabela.h"
+#include "gerador.h"
 
 /* Variáveis externas definidas pelo código gerado pelo Flex */
 extern int yylineno;   /* número da linha atual no arquivo de entrada */
@@ -352,6 +354,9 @@ void yyerror(const char *s) {
     printf("ERRO: %s proximo a '%s' - linha: %d\n", s, yytext, yylineno);
 }
 
+extern No *raizAST;
+TipoVar analisarSemantica(No *no, PilhaTabela *pilha);
+
 /*
  * main — ponto de entrada do compilador.
  *
@@ -378,8 +383,30 @@ int main(int argc, char **argv) {
     if (yyparse() == 0) {
         printf("Analise sintatica concluida com sucesso.\n");
         printf("\n--- AST ---\n");
-        imprimirAST(raizAST, 0); /* imprime a árvore para depuração */
-        liberarAST(raizAST);    /* libera toda a memória da AST     */
+        /* === Análise Semântica === */
+        PilhaTabela *pilha = iniciarPilha();
+        analisarSemantica(raizAST, pilha);
+        liberarPilha(pilha);
+        printf("Analise semantica concluida com sucesso.\n");
+
+        /* === Geração de Código MIPS === */
+        /* Monta o nome do arquivo de saída: troca extensão por .s */
+        char nomeSaida[512];
+        strncpy(nomeSaida, argv[1], sizeof(nomeSaida) - 3);
+        char *ponto = strrchr(nomeSaida, '.');
+        if (ponto) *ponto = '\0';
+        strcat(nomeSaida, ".s");
+
+        FILE *arquivoSaida = fopen(nomeSaida, "w");
+        if (!arquivoSaida) {
+            perror(nomeSaida);
+            return 1;
+        }
+        gerarCodigo(raizAST, arquivoSaida);
+        fclose(arquivoSaida);
+        printf("Codigo MIPS gerado em: %s\n", nomeSaida);
+
+        liberarAST(raizAST);
     }
 
     fclose(yyin);
