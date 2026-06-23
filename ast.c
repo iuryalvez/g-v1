@@ -1,8 +1,8 @@
 /*
- * ast.c — Implementação da Árvore Sintática Abstrata (AST)
+ * ast.c — Implementação da Árvore Sintática Abstrata (AST) para G-V2
  *
  * Este arquivo contém as funções para criar, imprimir e liberar nós da AST.
- * A criação dos nós é feita durante a análise sintática (g-v1.y), nas ações
+ * A criação dos nós é feita durante a análise sintática (g-v2.y), nas ações
  * semânticas associadas a cada regra da gramática.
  */
 
@@ -14,8 +14,9 @@
 /*
  * criarNo — função interna que aloca e inicializa um nó.
  *
- * Todos os campos de filhos começam como NULL. O campo 'valor' é copiado
- * com strdup() para que o nó tenha sua própria cópia do texto léxico.
+ * Todos os campos de filhos começam como NULL, agora incluindo o filho4.
+ * O campo 'valor' é copiado com strdup() para que o nó tenha sua 
+ * própria cópia do texto léxico.
  */
 static No *criarNo(TipoNo tipo, int linha, const char *valor) {
     No *no = (No *)malloc(sizeof(No));
@@ -26,16 +27,19 @@ static No *criarNo(TipoNo tipo, int linha, const char *valor) {
     no->tipo   = tipo;
     no->linha  = linha;
     no->valor  = valor ? strdup(valor) : NULL; /* copia o texto ou NULL */
+    
     no->filho1 = NULL;
     no->filho2 = NULL;
     no->filho3 = NULL;
+    no->filho4 = NULL;
+    
     return no;
 }
 
 /*
  * novoNo — cria um nó folha (sem filhos).
  * Usado para: IDENTIFICADOR, INTCONST, CARCONST, CADEIACARACTERES,
- *             TIPO_INT, TIPO_CAR, CMD_NOVALINHA, CMD_VAZIO, etc.
+ * TIPO_INT, TIPO_CAR, CMD_NOVALINHA, CMD_VAZIO, etc.
  */
 No *novoNo(TipoNo tipo, int linha, const char *valor) {
     return criarNo(tipo, linha, valor);
@@ -44,7 +48,7 @@ No *novoNo(TipoNo tipo, int linha, const char *valor) {
 /*
  * novoNo1 — cria um nó com 1 filho.
  * Usado para: negação unária (-expr, !expr), CMD_EXPR, CMD_LEIA,
- *             CMD_ESCREVA_EXPR, AST_PROGRAMA, etc.
+ * CMD_ESCREVA_EXPR, AST_GLOBAIS, CMD_RETORNE, etc.
  */
 No *novoNo1(TipoNo tipo, int linha, No *filho1) {
     No *no = criarNo(tipo, linha, NULL);
@@ -55,7 +59,8 @@ No *novoNo1(TipoNo tipo, int linha, No *filho1) {
 /*
  * novoNo2 — cria um nó com 2 filhos.
  * Usado para: operadores binários (soma, sub, atrib, ou, e, etc.),
- *             BLOCO, LISTA_DECL_VAR, LISTA_COMANDO, CMD_SE, CMD_ENQUANTO.
+ * BLOCO, LISTA_DECL_VAR, LISTA_COMANDO, CMD_SE, CMD_ENQUANTO,
+ * VETOR_DECL, VETOR_ACESSO, PARAMETRO.
  */
 No *novoNo2(TipoNo tipo, int linha, No *filho1, No *filho2) {
     No *no = criarNo(tipo, linha, NULL);
@@ -67,7 +72,7 @@ No *novoNo2(TipoNo tipo, int linha, No *filho1, No *filho2) {
 /*
  * novoNo3 — cria um nó com 3 filhos.
  * Usado para: CMD_SE_SENAO (condição + then + else)
- *             e DECL_VAR (identificador + tipo + extras por vírgula).
+ * AST_PROGRAMA (globais + funcoes + principal).
  */
 No *novoNo3(TipoNo tipo, int linha, No *filho1, No *filho2, No *filho3) {
     No *no = criarNo(tipo, linha, NULL);
@@ -78,18 +83,47 @@ No *novoNo3(TipoNo tipo, int linha, No *filho1, No *filho2, No *filho3) {
 }
 
 /*
+ * novoNo4 — cria um nó com 4 filhos.
+ * Usado estritamente para: AST_FUNCAO (id + tipo_retorno + parametros + bloco).
+ */
+No *novoNo4(TipoNo tipo, int linha, No *filho1, No *filho2, No *filho3, No *filho4) {
+    No *no = criarNo(tipo, linha, NULL);
+    no->filho1 = filho1;
+    no->filho2 = filho2;
+    no->filho3 = filho3;
+    no->filho4 = filho4;
+    return no;
+}
+
+/*
  * nomeTipo — retorna o nome textual de um TipoNo.
- * Usado apenas internamente por imprimirAST() para facilitar a leitura
+ * Atualizado com os novos tipos da G-V2 para facilitar a leitura
  * da árvore durante depuração e apresentação.
  */
 static const char *nomeTipo(TipoNo tipo) {
     switch (tipo) {
+        /* Estrutura e Escopos */
         case AST_PROGRAMA:          return "PROGRAMA";
         case AST_BLOCO:             return "BLOCO";
+        case AST_GLOBAIS:           return "GLOBAIS";
+        
+        /* Variáveis e Funções */
         case AST_LISTA_DECL_VAR:    return "LISTA_DECL_VAR";
         case AST_DECL_VAR:          return "DECL_VAR";
+        case AST_LISTA_FUNC:        return "LISTA_FUNC";
+        case AST_FUNCAO:            return "FUNCAO";
+        case AST_LISTA_PARAM:       return "LISTA_PARAM";
+        case AST_PARAMETRO:         return "PARAMETRO";
+        
+        /* Vetores */
+        case AST_VETOR_DECL:        return "VETOR_DECL";
+        case AST_VETOR_ACESSO:      return "VETOR_ACESSO";
+        
+        /* Tipos */
         case AST_TIPO_INT:          return "TIPO_INT";
         case AST_TIPO_CAR:          return "TIPO_CAR";
+        
+        /* Comandos */
         case AST_LISTA_COMANDO:     return "LISTA_COMANDO";
         case AST_CMD_VAZIO:         return "CMD_VAZIO";
         case AST_CMD_EXPR:          return "CMD_EXPR";
@@ -100,6 +134,11 @@ static const char *nomeTipo(TipoNo tipo) {
         case AST_CMD_SE:            return "CMD_SE";
         case AST_CMD_SE_SENAO:      return "CMD_SE_SENAO";
         case AST_CMD_ENQUANTO:      return "CMD_ENQUANTO";
+        case AST_CMD_RETORNE:       return "CMD_RETORNE";
+        
+        /* Expressões Matemáticas e Lógicas */
+        case AST_CHAMADA_FUNC:      return "CHAMADA_FUNC";
+        case AST_LISTA_EXPR:        return "LISTA_EXPR";
         case AST_ATRIB:             return "ATRIB";
         case AST_OU:                return "OU";
         case AST_E:                 return "E";
@@ -115,10 +154,13 @@ static const char *nomeTipo(TipoNo tipo) {
         case AST_DIV:               return "DIV";
         case AST_NEG:               return "NEG";
         case AST_NAO:               return "NAO";
+        
+        /* Folhas / Valores Lexicais */
         case AST_IDENTIFICADOR:     return "IDENTIFICADOR";
         case AST_CARCONST:          return "CARCONST";
         case AST_INTCONST:          return "INTCONST";
         case AST_CADEIACARACTERES:  return "CADEIACARACTERES";
+        
         default:                    return "DESCONHECIDO";
     }
 }
@@ -128,7 +170,7 @@ static const char *nomeTipo(TipoNo tipo) {
  *
  * Cada nível de profundidade adiciona 2 espaços de indentação.
  * Nós com valor léxico mostram o texto entre aspas.
- * A função percorre recursivamente: nó atual → filho1 → filho2 → filho3.
+ * A função percorre recursivamente até o filho4 (usado por funções).
  */
 void imprimirAST(No *no, int profundidade) {
     if (!no) return;
@@ -144,6 +186,7 @@ void imprimirAST(No *no, int profundidade) {
     imprimirAST(no->filho1, profundidade + 1);
     imprimirAST(no->filho2, profundidade + 1);
     imprimirAST(no->filho3, profundidade + 1);
+    imprimirAST(no->filho4, profundidade + 1); /* Novo percurso G-V2 */
 }
 
 /*
@@ -154,9 +197,12 @@ void imprimirAST(No *no, int profundidade) {
  */
 void liberarAST(No *no) {
     if (!no) return;
+    
     liberarAST(no->filho1);
     liberarAST(no->filho2);
     liberarAST(no->filho3);
+    liberarAST(no->filho4); /* Nova limpeza G-V2 */
+    
     if (no->valor) free(no->valor); /* libera a cópia do lexema */
     free(no);
 }
