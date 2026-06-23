@@ -406,6 +406,8 @@ int main(int argc, char **argv) {
         fclose(arquivoSaida);
         printf("Codigo MIPS gerado em: %s\n", nomeSaida);
 
+        imprimirAST(raizAST, 0);
+
         liberarAST(raizAST);
     }
 
