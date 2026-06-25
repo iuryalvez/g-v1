@@ -468,29 +468,27 @@ int main(int argc, char **argv) {
 
     if (yyparse() == 0) {
         printf("Analise sintatica concluida com sucesso.\n");
-        printf("\n--- AST ---\n");
-        
-        // PilhaTabela *pilha = iniciarPilha();
-        // analisarSemantica(raizAST, pilha);
-        // liberarPilha(pilha);
-        // printf("Analise semantica concluida com sucesso.\n");
 
-        // char nomeSaida[512];
-        // strncpy(nomeSaida, argv[1], sizeof(nomeSaida) - 3);
-        // char *ponto = strrchr(nomeSaida, '.');
-        // if (ponto) *ponto = '\0';
-        // strcat(nomeSaida, ".s");
+        PilhaTabela *pilha = iniciarPilha();
+        analisarSemantica(raizAST, pilha);
+        liberarPilha(pilha);
+        printf("Analise semantica concluida com sucesso.\n");
 
-        // FILE *arquivoSaida = fopen(nomeSaida, "w");
-        // if (!arquivoSaida) {
-        //     perror(nomeSaida);
-        //     return 1;
-        // }
-        // gerarCodigo(raizAST, arquivoSaida);
-        // fclose(arquivoSaida);
-        // printf("Codigo MIPS gerado em: %s\n", nomeSaida);
+        char nomeSaida[512];
+        strncpy(nomeSaida, argv[1], sizeof(nomeSaida) - 3);
+        char *ponto = strrchr(nomeSaida, '.');
+        if (ponto) *ponto = '\0';
+        strcat(nomeSaida, ".s");
 
-        imprimirAST(raizAST, 0);
+        FILE *arquivoSaida = fopen(nomeSaida, "w");
+        if (!arquivoSaida) {
+            perror(nomeSaida);
+            return 1;
+        }
+        gerarCodigo(raizAST, arquivoSaida);
+        fclose(arquivoSaida);
+        printf("Codigo MIPS gerado em: %s\n", nomeSaida);
+
         liberarAST(raizAST);
     }
 
