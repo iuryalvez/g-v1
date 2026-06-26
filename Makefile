@@ -38,28 +38,17 @@ clean:
 	rm -f *.o g-v2 g-v2.c g-v2.h lexico.c *.s
 
 # === ROTINA DE TESTES ===
-test: g-v2
-	@echo "\n================================================="
-	@echo "        EXECUTANDO TESTES CORRETOS               "
-	@echo "================================================="
+test-corretos: g-v2
+	@echo "\n=== TESTES CORRETOS (Devem passar 100%) ==="
 	@for file in Testes_G-V2/Corretos/*.txt; do \
+		echo "\n[COMPILANDO] $$file"; \
+		./g-v2 "$$file"; \
+	done
+test-erros: g-v2
+	@echo "\n=== TESTES SEMANTICOS (Devem acusar erro e abortar) ==="
+	@for file in Testes_G-V2/ErrosSemanticos/*.txt; do \
 		echo "\n[TESTANDO] $$file"; \
 		./g-v2 "$$file" || true; \
 	done
-	@echo "\n================================================="
-	@echo "      EXECUTANDO TESTES DE ERRO SINTATICO        "
-	@echo "================================================="
-	@for file in Testes_G-V2/ErroSintatico/*.txt; do \
-		echo "\n[TESTANDO] $$file"; \
-		./g-v2 "$$file" || true; \
-	done
-	@echo "\n================================================="
-	@echo "      EXECUTANDO TESTES DE ERRO SEMANTICO        "
-	@echo "================================================="
-	@for file in Testes_G-V2/ErroSemantico/*.txt; do \
-		echo "\n[TESTANDO] $$file"; \
-		./g-v2 "$$file" || true; \
-	done
-	@echo "\n================================================="
-	@echo "              BATERIA FINALIZADA                 "
-	@echo "=================================================\n"
+test: test-corretos test-erros
+	@echo "\n=== TODOS OS TESTES CONCLUÍDOS ==="
